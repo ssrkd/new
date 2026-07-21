@@ -20,7 +20,9 @@ _groq_key_cycle = None
 def _get_groq_key_cycle():
     global _groq_key_cycle
     if _groq_key_cycle is None:
-        keys = get_settings().groq_api_keys
+        keys = get_settings().parsed_groq_keys
+        if not keys:
+            keys = [""]
         _groq_key_cycle = itertools.cycle(keys)
     return _groq_key_cycle
 
@@ -86,7 +88,8 @@ async def call_llm(messages: list[dict], max_tokens: int = 1024, system: str | N
 
     # Try Groq (up to 4 keys via round-robin)
     last_error = None
-    for _ in range(len(get_settings().groq_api_keys)):
+    keys = get_settings().parsed_groq_keys
+    for _ in range(max(len(keys), 1)):
         try:
             return await _call_groq(messages, max_tokens, system=system)
         except Exception as e:
