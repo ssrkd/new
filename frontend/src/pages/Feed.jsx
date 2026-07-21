@@ -41,7 +41,7 @@ export default function Feed() {
       .from('processed_articles')
       .select(`
         id, raw_article_id, summary, tags, entities, importance, importance_reason, created_at,
-        raw_articles!inner(id, title, url, content, published_at, source_id,
+        raw_articles!inner(id, title, url, published_at, source_id,
           sources!inner(name, category)
         )
       `, { count: 'exact' });
@@ -86,7 +86,6 @@ export default function Feed() {
       raw_article_id: d.raw_article_id,
       title: d.raw_articles?.title,
       url: d.raw_articles?.url,
-      content: d.raw_articles?.content,
       published_at: d.raw_articles?.published_at,
       source_name: d.raw_articles?.sources?.name,
       summary: d.summary,
@@ -98,6 +97,21 @@ export default function Feed() {
     }));
 
     return { items: mapped, total: count || 0 };
+  };
+
+  const handleArticleClick = async (article) => {
+    setSelectedArticle(article);
+    // Fetch full content lazily
+    if (!article.content) {
+      const { data } = await supabase
+        .from('raw_articles')
+        .select('content')
+        .eq('id', article.raw_article_id)
+        .single();
+      if (data) {
+        setSelectedArticle(prev => prev?.id === article.id ? { ...prev, content: data.content } : prev);
+      }
+    }
   };
 
   const load = useCallback(async (off = 0) => {
@@ -238,7 +252,7 @@ export default function Feed() {
           <>
             <div className="articles-grid">
               {articles.map(art => (
-                <ArticleCard key={art.id} article={art} onClick={setSelectedArticle} />
+                <ArticleCard key={art.id} article={art} onClick={handleArticleClick} />
               ))}
             </div>
 
