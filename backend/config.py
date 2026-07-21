@@ -1,9 +1,10 @@
 """
 Configuration — reads from .env via pydantic-settings
+Environment variables always take priority over .env file values.
 """
 import os
 from pydantic_settings import BaseSettings
-from functools import lru_cache
+from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -18,7 +19,7 @@ class Settings(BaseSettings):
 
     # ── LLM — Groq (fallback, round-robin) ───────────────────
     groq_api_keys: str = ""
-    
+
     @property
     def parsed_groq_keys(self) -> list[str]:
         if not self.groq_api_keys:
@@ -31,7 +32,7 @@ class Settings(BaseSettings):
         except Exception:
             pass
         return [k.strip() for k in self.groq_api_keys.split(',') if k.strip()]
-        
+
     groq_base_url: str = "https://api.groq.com/openai/v1/chat/completions"
     groq_model: str = "llama-3.3-70b-versatile"
 
@@ -49,28 +50,27 @@ class Settings(BaseSettings):
     embedding_model: str = "paraphrase-multilingual-mpnet-base-v2"
 
     # ── Scheduler intervals (minutes) ─────────────────────────
-    # Ingestion: collect raw articles from all sources
     ingestion_interval_minutes: int = 10
-    # Processing: LLM analysis of collected articles (runs right after ingestion)
     processing_interval_minutes: int = 12
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
-        # Allow reading from environment variables even without .env file
         case_sensitive = False
 
 
-_settings: Settings | None = None
+_settings: Optional[Settings] = None
 
 
 def get_settings() -> Settings:
     global _settings
     if _settings is None:
-        _settings = Settings(
-            supabase_url=os.environ.get("SUPABASE_URL", ""),
-            supabase_service_key=os.environ.get("SUPABASE_SERVICE_KEY", ""),
-            openrouter_api_key=os.environ.get("OPENROUTER_API_KEY", ""),
-            groq_api_keys=os.environ.get("GROQ_API_KEYS", ""),
-        )
+        # pydantic-settings reads env vars + .env automatically
+        _settings = Settings()
+        # Safety fallback for platforms that inject env vars late (e.g. Northflank)
+        if not _settings.supabase_url:
+            object.__setattr__(_settings, 'supabase_url', os.environ.get("SUPABASE_URL", ""))
+            object.__setattr__(_settings, 'supabase_service_key', os.environ.get("SUPABASE_SERVICE_KEY", ""))
+            object.__setattr__(_settings, 'openrouter_api_key', os.environ.get("OPENROUTER_API_KEY", ""))
+            object.__setattr__(_settings, 'groq_api_keys', os.environ.get("GROQ_API_KEYS", ""))
     return _settings
