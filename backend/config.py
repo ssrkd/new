@@ -1,6 +1,7 @@
 """
 Configuration — reads from .env via pydantic-settings
 """
+import os
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -56,8 +57,20 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        # Allow reading from environment variables even without .env file
+        case_sensitive = False
 
 
-@lru_cache
+_settings: Settings | None = None
+
+
 def get_settings() -> Settings:
-    return Settings()
+    global _settings
+    if _settings is None:
+        _settings = Settings(
+            supabase_url=os.environ.get("SUPABASE_URL", ""),
+            supabase_service_key=os.environ.get("SUPABASE_SERVICE_KEY", ""),
+            openrouter_api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+            groq_api_keys=os.environ.get("GROQ_API_KEYS", ""),
+        )
+    return _settings
