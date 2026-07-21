@@ -126,7 +126,11 @@ export default function Feed() {
     }
   }, [category, importance, sourceId, govFilter]);
 
-  useEffect(() => { load(0); }, [load]);
+  useEffect(() => { 
+    load(0); 
+    // Silently ping backend to wake it up for background scraping
+    fetch(import.meta.env.VITE_API_BASE_URL + '/api/sources').catch(() => {});
+  }, [load]);
 
   // Real-time subscription via Supabase Realtime
   useEffect(() => {
