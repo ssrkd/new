@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getArticles } from '../api';
 import ArticleCard from '../components/ArticleCard';
 import { supabase } from '../supabase';
@@ -26,6 +26,8 @@ export default function Feed() {
   const [error, setError] = useState('');
   const [offset, setOffset] = useState(0);
   const [longLoading, setLongLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const autoRefreshRef = useRef(null);
 
   // Filters
   const [category, setCategory] = useState('');
@@ -123,6 +125,7 @@ export default function Feed() {
       setArticles(data.items || []);
       setTotal(data.total || 0);
       setOffset(off);
+      setLastUpdated(new Date());
     } catch (e) {
       setError(e.message);
     } finally {
@@ -135,6 +138,7 @@ export default function Feed() {
       const data = await fetchArticlesFromSupabase(off);
       setArticles(data.items || []);
       setTotal(data.total || 0);
+      setLastUpdated(new Date());
     } catch (e) {
       // ignore background errors
     }
@@ -145,6 +149,15 @@ export default function Feed() {
     // Silently ping backend to wake it up for background scraping
     fetch(import.meta.env.VITE_API_BASE_URL + '/api/sources').catch(() => {});
   }, [load]);
+
+  // Auto-refresh every 10 minutes in the background (silent, no spinner)
+  useEffect(() => {
+    if (autoRefreshRef.current) clearInterval(autoRefreshRef.current);
+    autoRefreshRef.current = setInterval(() => {
+      loadSilent(0);
+    }, 10 * 60 * 1000); // 10 minutes
+    return () => clearInterval(autoRefreshRef.current);
+  }, [loadSilent]);
 
   // Real-time subscription via Supabase Realtime
   useEffect(() => {
@@ -166,7 +179,25 @@ export default function Feed() {
     <>
       {/* Header */}
       <div className="page-header">
-        <h1 className="page-header-title">Новостная лента</h1>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+          <h1 className="page-header-title">Новостная лента</h1>
+          {lastUpdated && (
+            <span style={{
+              fontSize: 11,
+              color: 'var(--c-text-3)',
+              background: 'var(--c-subtle)',
+              padding: '2px 8px',
+              borderRadius: 6,
+              fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap',
+            }}>
+              послед. обновление&nbsp;
+              {lastUpdated.toLocaleDateString('ru', { timeZone: 'Asia/Almaty', day: '2-digit', month: '2-digit', year: 'numeric' })}
+              &nbsp;
+              {lastUpdated.toLocaleTimeString('ru', { timeZone: 'Asia/Almaty', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          )}
+        </div>
         {!loading && (
           <span style={{ fontSize: 12, color: 'var(--c-text-3)' }}>
             {total} статей

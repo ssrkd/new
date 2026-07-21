@@ -46,6 +46,7 @@ export const deleteSource = (id) =>
 // ── Admin ─────────────────────────────────────────────────────────────────────
 export const triggerIngestion = () => request('/api/admin/ingest', { method: 'POST' });
 export const triggerProcessing = () => request('/api/admin/process', { method: 'POST' });
+export const getAdminStatus = () => request('/api/admin/status');
 
 // ── Chats ────────────────────────────────────────────────────────
 export const getChats = () => request('/api/chats');

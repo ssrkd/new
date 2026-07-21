@@ -486,38 +486,46 @@ export default function NoxAiDashboard({ user }) {
   }, [localTtsAvailable]);
 
   // Fallback: браузерный TTS
+  const getBestVoice = useCallback((lang) => {
+    const voices = window.speechSynthesis.getVoices();
+    if (lang === 'kk-KZ') {
+      return voices.find(v => v.lang.startsWith('kk')) || null;
+    }
+    // Russian: prefer male voices
+    const maleNames = ['Yuri', 'Pavel', 'Dmitry', 'Aleksandr', 'Alexey', 'Ivan'];
+    for (const name of maleNames) {
+      const v = voices.find(v => v.lang.startsWith('ru') && v.name.includes(name));
+      if (v) return v;
+    }
+    // Any russian
+    return voices.find(v => v.lang.startsWith('ru')) || null;
+  }, []);
+
   const speakWithBrowserTts = useCallback((text) => {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     
-    // Auto-detect Kazakh characters
     const isKazakh = /[әіңғүұқөһӘІҢҒҮҰҚӨҺ]/i.test(text);
-    utterance.lang = isKazakh ? 'kk-KZ' : 'ru-RU';
+    const lang = isKazakh ? 'kk-KZ' : 'ru-RU';
+    utterance.lang = lang;
+    utterance.rate = 1.1;
+    utterance.pitch = 0.85;
     
-    utterance.rate = 1.15;
-    utterance.pitch = 0.9;
-    
-    const voices = window.speechSynthesis.getVoices();
-    let selectedVoice = null;
-    
-    if (isKazakh) {
-      selectedVoice = voices.find(v => v.lang.startsWith('kk'));
-    }
-    
-    if (!selectedVoice) {
-      // Prefer male voices like Pavel or Yuri if available
-      selectedVoice = voices.find(v => v.lang.startsWith('ru') && (v.name.includes('Yuri') || v.name.includes('Pavel')))
-                   || voices.find(v => v.lang.startsWith('ru'));
-    }
-    
-    if (selectedVoice) utterance.voice = selectedVoice;
-    
-    audioRef.current = {
-      pause: () => window.speechSynthesis.cancel()
+    const doSpeak = () => {
+      const voice = getBestVoice(lang);
+      if (voice) utterance.voice = voice;
+      audioRef.current = { pause: () => window.speechSynthesis.cancel() };
+      window.speechSynthesis.speak(utterance);
     };
-    window.speechSynthesis.speak(utterance);
-  }, []);
+
+    // Voices may not be loaded yet on first call
+    if (window.speechSynthesis.getVoices().length > 0) {
+      doSpeak();
+    } else {
+      window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true });
+    }
+  }, [getBestVoice]);
 
   const speakText = useCallback(async (text) => {
     if (!ttsEnabled) return;
