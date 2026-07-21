@@ -2,6 +2,7 @@
 Configuration — reads from .env via pydantic-settings
 """
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from functools import lru_cache
 
 
@@ -17,6 +18,22 @@ class Settings(BaseSettings):
 
     # ── LLM — Groq (fallback, round-robin) ───────────────────
     groq_api_keys: list[str] = []
+    
+    @field_validator('groq_api_keys', mode='before')
+    @classmethod
+    def parse_api_keys(cls, v):
+        if isinstance(v, str):
+            # Try parsing as JSON array first, fallback to comma-separated
+            import json
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return [str(k).strip() for k in parsed if k]
+            except Exception:
+                pass
+            return [k.strip() for k in v.split(',') if k.strip()]
+        return v
+        
     groq_base_url: str = "https://api.groq.com/openai/v1/chat/completions"
     groq_model: str = "llama-3.3-70b-versatile"
 
