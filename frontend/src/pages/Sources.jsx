@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getSources, createSource, updateSource, deleteSource } from '../api';
+import { createSource, updateSource, deleteSource } from '../api';
+import { supabase } from '../supabase';
 
 const TYPES = ['rss', 'telegram', 'api'];
 const EMPTY_FORM = { name: '', url: '', type: 'rss', active: true };
@@ -25,8 +26,12 @@ export default function Sources() {
     setLoading(true);
     setError('');
     try {
-      const data = await getSources();
-      setSources(data);
+      const { data, error: sbError } = await supabase
+        .from('sources')
+        .select('*')
+        .order('created_at', { ascending: true });
+      if (sbError) throw new Error(sbError.message);
+      setSources(data || []);
     } catch (e) {
       setError(e.message);
     } finally {
