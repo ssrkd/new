@@ -69,14 +69,15 @@ export default function Feed() {
       }
     }
 
-    // We order by created_at desc for pagination
-    q = q.order('created_at', { ascending: false });
-    q = q.range(off, off + PAGE_SIZE - 1);
+    // Сначала по времени обработки (created_at) desc — новые сверху
+    q = q
+      .order('created_at', { ascending: false })
+      .range(off, off + PAGE_SIZE - 1);
 
     const { data, count, error } = await q;
     if (error) throw new Error(error.message);
 
-    // Local JS sort by published_at
+    // Досортировка по published_at новейших сверху
     const sorted = [...(data || [])].sort((a, b) => {
       const dateA = new Date(a.raw_articles?.published_at || a.created_at);
       const dateB = new Date(b.raw_articles?.published_at || b.created_at);
@@ -140,9 +141,26 @@ export default function Feed() {
       setTotal(data.total || 0);
       setLastUpdated(new Date());
     } catch (e) {
-      // ignore background errors
+      console.error('Silent refresh failed:', e);
     }
   }, [category, importance, sourceId, govFilter]);
+
+  const LiveTimeAgo = ({ date }) => {
+    const [text, setText] = useState('');
+    useEffect(() => {
+      if (!date) return;
+      const update = () => {
+        const diff = Math.floor((new Date() - date) / 1000);
+        if (diff < 60) setText(`${diff} сек. назад`);
+        else if (diff < 3600) setText(`${Math.floor(diff / 60)} мин. назад`);
+        else setText(`${Math.floor(diff / 3600)} час. назад`);
+      };
+      update();
+      const interval = setInterval(update, 1000);
+      return () => clearInterval(interval);
+    }, [date]);
+    return <span>{date ? text : '...'}</span>;
+  };
 
   useEffect(() => { 
     load(0); 
@@ -182,20 +200,10 @@ export default function Feed() {
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
           <h1 className="page-header-title">Новостная лента</h1>
           {lastUpdated && (
-            <span style={{
-              fontSize: 11,
-              color: 'var(--c-text-3)',
-              background: 'var(--c-subtle)',
-              padding: '2px 8px',
-              borderRadius: 6,
-              fontVariantNumeric: 'tabular-nums',
-              whiteSpace: 'nowrap',
-            }}>
-              послед. обновление&nbsp;
-              {lastUpdated.toLocaleDateString('ru', { timeZone: 'Asia/Almaty', day: '2-digit', month: '2-digit', year: 'numeric' })}
-              &nbsp;
-              {lastUpdated.toLocaleTimeString('ru', { timeZone: 'Asia/Almaty', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </span>
+            <div style={{ fontSize: '11px', color: '#8E8E93', display: 'flex', gap: '4px', alignItems: 'center' }}>
+              <span>Обновлено:</span>
+              <LiveTimeAgo date={lastUpdated} />
+            </div>
           )}
         </div>
         {!loading && (

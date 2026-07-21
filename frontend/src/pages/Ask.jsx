@@ -10,133 +10,137 @@ function OwnerAvatar({ user }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
       <span style={{ fontSize: '13px', fontWeight: '600', color: '#1A1A1A' }}>Владелец&nbsp;</span>
-      {user?.avatar_url ? (
-        <img
-          src={user.avatar_url}
-          alt="avatar"
-          style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-        />
-      ) : (
-        <div style={{
-          width: '28px', height: '28px', borderRadius: '50%',
-          background: 'linear-gradient(135deg,#1A1A1A,#555)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '11px', color: '#FFF', fontWeight: '700', flexShrink: 0,
-        }}>
-          {(user?.name || user?.username || 'O')[0].toUpperCase()}
-        </div>
-      )}
+      <img
+        src="/images/serik.JPG"
+        alt="avatar"
+        style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+        onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=Serik&background=random' }}
+      />
     </div>
   );
 }
 
-function InputBar({ inputText, onChange, onKeyDown, onSend, isLoading, textareaRef, ttsEnabled, onToggleTts, onStop, isListening, isTranscribing, onToggleListen }) {
+function InputBar({ 
+  inputText, onChange, onKeyDown, onSend, isLoading, textareaRef, 
+  ttsEnabled, onToggleTts, onStop, 
+  isListening, isTranscribing, onToggleListen,
+  wakeMode, wakeState, toggleWakeMode 
+}) {
   const canSend = inputText.trim() && !isLoading;
   return (
-    <div style={{
-      width: '100%',
-      backgroundColor: '#FFFFFF',
-      border: '2px solid #E8E8E8',
-      borderRadius: '16px',
-      padding: '12px 14px 10px 14px',
-      boxSizing: 'border-box',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px',
-    }}>
-      <textarea
-        ref={textareaRef}
-        value={inputText}
-        onChange={onChange}
-        onKeyDown={onKeyDown}
-        placeholder="Задавайте любые вопросы"
-        rows={1}
-        style={{
-          width: '100%', border: 'none', background: 'transparent',
-          resize: 'none', outline: 'none', fontSize: '14px',
-          color: '#1A1A1A', fontFamily: 'inherit', lineHeight: '1.5',
-          userSelect: 'text', padding: 0, margin: 0, display: 'block',
-          minHeight: '21px', maxHeight: '150px', overflowY: 'auto'
-        }}
-      />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={onToggleTts}
-            title={ttsEnabled ? 'Озвучка включена' : 'Озвучка выключена'}
-            style={{
-              background: ttsEnabled ? '#E8E8E8' : 'transparent',
-              border: 'none', color: ttsEnabled ? '#1A1A1A' : '#AEAEB2',
-              cursor: 'pointer', padding: '5px 6px', display: 'flex',
-              alignItems: 'center', borderRadius: '8px', transition: 'all 0.15s',
-              gap: '4px', fontSize: '12px', fontFamily: 'inherit', fontWeight: '500',
-            }}
-          >
-            {ttsEnabled ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-9.536a5 5 0 000 7.072M6.343 6.343A8 8 0 1017.657 17.657" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5L6 9H2v6h4l5 4V5z" />
-              </svg>
-            ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5L6 9H2v6h4l5 4V5z" />
-                <line x1="23" y1="9" x2="17" y2="15" strokeWidth={2} strokeLinecap="round" />
-                <line x1="17" y1="9" x2="23" y2="15" strokeWidth={2} strokeLinecap="round" />
-              </svg>
-            )}
-            {ttsEnabled ? 'Голос вкл' : 'Голос выкл'}
-          </button>
-          <button
-            onClick={onToggleListen}
-            disabled={isTranscribing}
-            title={isTranscribing ? 'Распознаю речь...' : isListening ? 'Остановить запись' : 'Голосовой ввод (Whisper)'}
-            style={{
-              background: isListening ? '#FFE5E5' : isTranscribing ? '#FFF3E0' : 'transparent',
-              border: 'none', color: isListening ? '#FF3B30' : isTranscribing ? '#FF9500' : '#AEAEB2',
-              cursor: isTranscribing ? 'wait' : 'pointer', padding: '5px 6px', display: 'flex',
-              alignItems: 'center', borderRadius: '8px', transition: 'all 0.15s',
-              gap: '4px', fontSize: '12px', fontFamily: 'inherit', fontWeight: '500',
-            }}
-          >
-            {isTranscribing ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ animation: 'spin 1s linear infinite' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5M4 4l3 9a9 9 0 0 0 16.2 0M20 20l-3-9" />
-              </svg>
-            ) : isListening ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
-            ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
-              </svg>
-            )}
-            {isTranscribing ? 'Распознаю...' : isListening ? 'Стоп' : 'Микрофон'}
-          </button>
+    <div style={{ position: 'relative', width: '100%', maxWidth: '640px', margin: '0 auto' }}>
+      {/* Если включен режим Wake Word, показываем статус */}
+      {wakeMode && (
+        <div style={{
+          position: 'absolute', top: '-36px', left: '50%', transform: 'translateX(-50%)',
+          background: wakeState === 'recording' ? '#FF3B30' : wakeState === 'thinking' ? '#FF9500' : 'rgba(255,255,255,0.9)',
+          color: wakeState === 'recording' || wakeState === 'thinking' ? '#FFF' : '#1A1A1A',
+          padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.08)', backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.3s ease'
+        }}>
+          {wakeState === 'recording' ? (
+            <><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FFF', animation: 'pulse 1s infinite' }}/> Слушаю вас...</>
+          ) : wakeState === 'thinking' ? (
+            <><div className="spinner" style={{ width: '12px', height: '12px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#FFF', borderRadius: '50%', animation: 'spin 1s linear infinite' }}/> Распознаю...</>
+          ) : (
+            <><svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.5a6.5 6.5 0 100-13 6.5 6.5 0 000 13zM12 18.5v3m-3-3l3 3 3-3" /></svg> Скажите «Джек»</>
+          )}
         </div>
+      )}
+      
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', background: '#FFF', padding: '10px 12px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        
+        {/* Кнопка TTS (Голос) */}
+        <button
+          onClick={onToggleTts}
+          title={ttsEnabled ? 'Озвучка включена' : 'Озвучка выключена'}
+          style={{
+            flexShrink: 0, padding: '8px', borderRadius: '12px',
+            background: ttsEnabled ? '#E8E8E8' : 'transparent',
+            border: 'none', color: ttsEnabled ? '#1A1A1A' : '#AEAEB2',
+            cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px'
+          }}
+        >
+          {ttsEnabled ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-9.536a5 5 0 000 7.072M6.343 6.343A8 8 0 1017.657 17.657" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5L6 9H2v6h4l5 4V5z" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5L6 9H2v6h4l5 4V5z" />
+              <line x1="23" y1="9" x2="17" y2="15" strokeWidth={2} strokeLinecap="round" />
+              <line x1="17" y1="9" x2="23" y2="15" strokeWidth={2} strokeLinecap="round" />
+            </svg>
+          )}
+          <span style={{ fontSize: '9px', fontWeight: '600' }}>{ttsEnabled ? 'Звук' : 'Mute'}</span>
+        </button>
+
+        {/* Кнопка постоянного слушания "Wake Word" */}
+        <button
+          onClick={onToggleListen}
+          title={isTranscribing ? 'Распознаю речь...' : isListening ? 'Остановить запись' : 'Голосовой ввод (Whisper)'}
+          style={{
+            background: isListening ? '#FFE5E5' : isTranscribing ? '#FFF3E0' : 'transparent',
+            border: 'none', color: isListening ? '#FF3B30' : isTranscribing ? '#FF9500' : '#AEAEB2',
+            cursor: isTranscribing ? 'wait' : 'pointer', padding: '5px 6px', display: 'flex',
+            alignItems: 'center', borderRadius: '8px', transition: 'all 0.15s',
+            gap: '4px', fontSize: '12px', fontFamily: 'inherit', fontWeight: '500',
+          }}
+        >
+          {isTranscribing ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ animation: 'spin 1s linear infinite' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5M4 4l3 9a9 9 0 0 0 16.2 0M20 20l-3-9" />
+            </svg>
+          ) : isListening ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="6" width="12" height="12" rx="2" />
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
+            </svg>
+          )}
+        </button>
+
+        <textarea
+          ref={textareaRef}
+          value={inputText}
+          onChange={onChange}
+          onKeyDown={onKeyDown}
+          placeholder="Задавайте любые вопросы"
+          rows={1}
+          style={{
+            width: '100%', border: 'none', background: 'transparent',
+            resize: 'none', outline: 'none', fontSize: '14px',
+            color: '#1A1A1A', fontFamily: 'inherit', lineHeight: '1.5',
+            userSelect: 'text', padding: 0, margin: 0, display: 'block',
+            minHeight: '21px', maxHeight: '150px', overflowY: 'auto'
+          }}
+        />
+
         <button
           id="send-msg-btn"
           onClick={onSend}
           disabled={!canSend}
           style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '9px 20px', borderRadius: '100px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '32px', height: '32px', borderRadius: '50%',
             backgroundColor: canSend ? '#1A1A1A' : '#E4E4E4',
             color: canSend ? '#FFF' : '#AEAEB2',
-            border: canSend ? '2px solid #1A1A1A' : '2px solid #D0D0D0',
+            border: 'none',
             cursor: canSend ? 'pointer' : 'not-allowed',
-            fontSize: '14px', fontWeight: '600', transition: 'all 0.15s', fontFamily: 'inherit',
-            boxShadow: canSend ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+            transition: 'all 0.15s',
           }}
         >
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19V5m-7 7l7-7 7 7" />
           </svg>
-          Отправить
         </button>
       </div>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
     </div>
   );
 }
@@ -167,11 +171,164 @@ export default function NoxAiDashboard({ user }) {
   const audioRef = useRef(null);
   const speakTextRef = useRef(null);
 
-  // Voice Input — MediaRecorder → Groq Whisper (точное распознавание)
+  // Voice Input — MediaRecorder → Groq Whisper
   const [isListening, setIsListening] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  // Ссылка на sendMessage, чтобы wake word имел к ней доступ без re-renders
+  const sendMessageRef = useRef(null);
+
+  // Wake Word — "Джек" / "Jack" — постоянное фоновое слушание
+  const [wakeMode, setWakeMode] = useState(true);      // wake word активен по умолчанию
+  const [wakeState, setWakeState] = useState('idle');  // idle | awake | recording | thinking
+  const wakeSpeechRef = useRef(null);                  // SpeechRecognition instance
+  const wakeRecordTimerRef = useRef(null);             // таймаут конца речи
+  const wakeSilenceRef = useRef(null);                 // VAD silence timer
+  const wakeMediaRef = useRef(null);                   // текущий MediaRecorder для wake
+  const wakeChunksRef = useRef([]);
+
+  const WAKE_WORDS = ['джек', 'джак', 'jack', 'джак', 'джек'];
+  const SILENCE_TIMEOUT_MS = 1800; // мс тишины до отправки
+
+  // Начать запись после wake word
+  const startWakeRecording = useCallback(async (sendFn) => {
+    setWakeState('awake');
+    wakeChunksRef.current = [];
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      wakeMediaRef.current = recorder;
+
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) wakeChunksRef.current.push(e.data); };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        setWakeState('thinking');
+        const blob = new Blob(wakeChunksRef.current, { type: mimeType });
+        if (blob.size < 1000) { setWakeState('idle'); return; }
+
+        const formData = new FormData();
+        formData.append('file', blob, `wake_audio.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`);
+        try {
+          const res = await fetch('/api/voice/transcribe', { method: 'POST', body: formData });
+          if (res.ok) {
+            const data = await res.json();
+            const text = data.text?.trim();
+            if (text && text.length > 1) {
+              await sendFn(text);
+            }
+          }
+        } catch (err) { console.error('Wake transcribe error:', err); }
+        setWakeState('idle');
+      };
+
+      recorder.start();
+      setWakeState('recording');
+
+      // VAD: останавливаемся через SILENCE_TIMEOUT_MS после последнего звука
+      const silenceStop = () => {
+        clearTimeout(wakeSilenceRef.current);
+        wakeSilenceRef.current = setTimeout(() => {
+          if (wakeMediaRef.current?.state === 'recording') {
+            wakeMediaRef.current.stop();
+          }
+        }, SILENCE_TIMEOUT_MS);
+      };
+
+      // Анализ аудио для VAD
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      let isSpeaking = false;
+
+      const checkVAD = () => {
+        if (wakeMediaRef.current?.state !== 'recording') { audioCtx.close(); return; }
+        analyser.getByteFrequencyData(buf);
+        const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
+        if (avg > 15) {
+          if (!isSpeaking) { isSpeaking = true; clearTimeout(wakeSilenceRef.current); }
+        } else {
+          if (isSpeaking) { isSpeaking = false; silenceStop(); }
+        }
+        requestAnimationFrame(checkVAD);
+      };
+      silenceStop(); // начальный таймаут если вообще нет речи
+      checkVAD();
+    } catch (e) { console.error('Wake record error:', e); setWakeState('idle'); }
+  }, []);
+
+  const startWakeWord = useCallback((sendFn) => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Браузер не поддерживает Web Speech API. Используйте Chrome.'); return; }
+
+    const recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'ru-RU';
+    recognition.maxAlternatives = 3;
+    wakeSpeechRef.current = recognition;
+
+    recognition.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        // Check all alternatives for wake word
+        let foundWake = false;
+        for (let alt = 0; alt < event.results[i].length; alt++) {
+          const t = event.results[i][alt].transcript.toLowerCase();
+          if (WAKE_WORDS.some(w => t.includes(w))) { foundWake = true; break; }
+        }
+        if (foundWake && wakeState !== 'recording' && wakeState !== 'thinking') {
+          recognition.stop();
+          // Короткий звук пробуждения
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.frequency.value = 880; gain.gain.value = 0.15;
+          osc.start(); setTimeout(() => { osc.stop(); ctx.close(); }, 150);
+          startWakeRecording(sendFn).then(() => {
+            // Перезапускаем wake recognition после обработки
+            setTimeout(() => { if (wakeSpeechRef.current) recognition.start(); }, 1000);
+          });
+          break;
+        }
+      }
+    };
+
+    recognition.onerror = (e) => {
+      if (e.error !== 'no-speech') console.warn('Wake SR error:', e.error);
+    };
+    recognition.onend = () => {
+      // Автостарт
+      if (wakeSpeechRef.current) { try { recognition.start(); } catch (_) {} }
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      console.warn("Could not start SpeechRecognition automatically", e);
+    }
+    setWakeState('idle');
+  }, [startWakeRecording, wakeState]);
+
+  // Мы больше не используем кнопку включения/выключения
+  // wakeMode включен всегда
+  
+  // Авто-старт при загрузке
+  useEffect(() => {
+    // Ждем секунду после рендера, чтобы DOM и Media были готовы
+    const t = setTimeout(() => {
+      startWakeWord((text) => {
+        if (sendMessageRef.current) sendMessageRef.current(text);
+      });
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [startWakeWord]);
 
   const toggleListening = async () => {
     if (isListening) {
@@ -365,8 +522,9 @@ export default function NoxAiDashboard({ user }) {
     setLoadingStage(0);
 
     // Cycle through thinking stages
-    const stageTimer1 = setTimeout(() => setLoadingStage(1), 1200);
-    const stageTimer2 = setTimeout(() => setLoadingStage(2), 2800);
+    const stageTimer1 = setTimeout(() => setLoadingStage(1), 1200); // поиск...
+    const stageTimer2 = setTimeout(() => setLoadingStage(2), 3500); // веб-поиск...
+    const stageTimer3 = setTimeout(() => setLoadingStage(3), 5500); // формирую ответ...
 
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -407,6 +565,10 @@ export default function NoxAiDashboard({ user }) {
       isSendingRef.current = false;
     }
   }, [inputText, isLoading, activeChatId, loadChats]);
+
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -465,12 +627,21 @@ export default function NoxAiDashboard({ user }) {
   // Синтез через Edge TTS (локальный прокси или серверный /api/edge-tts)
   const fetchEdgeTtsAudio = useCallback(async (sentence) => {
     const isLocal = localTtsAvailable;
+    const isKazakh = /[әіңғүұқөһӘІҢҒҮҰҚӨҺ]/i.test(sentence);
+    const isEnglish = /^[A-Za-z0-9\s.,!?'"-]+$/.test(sentence) && sentence.length > 5;
+    
+    let voice = 'ru-RU-DmitryNeural';
+    if (isKazakh) voice = 'kk-KZ-AigulNeural';
+    else if (isEnglish) voice = 'en-US-GuyNeural';
+
     const params = new URLSearchParams({
       text: sentence,
-      voice: 'ru-RU-DmitryNeural',
-      rate: '+18%',
-      pitch: '-4Hz'
+      voice,
+      rate: '+10%'
     });
+    if (voice === 'ru-RU-DmitryNeural') {
+      params.append('pitch', '-2Hz');
+    }
 
     if (isLocal) {
       // Локальный edge-tts Python прокси

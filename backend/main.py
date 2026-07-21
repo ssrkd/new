@@ -42,6 +42,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",   # Vite dev server
+        "http://localhost:5174",
+        "http://localhost:7882",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "https://new-three-lemon-63.vercel.app",  # Vercel production

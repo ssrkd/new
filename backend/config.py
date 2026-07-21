@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     ingestion_interval_minutes: int = 10
     processing_interval_minutes: int = 12
 
+    # ── Tavily Web Search ──────────────────────────────────────
+    tavily_api_key: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
