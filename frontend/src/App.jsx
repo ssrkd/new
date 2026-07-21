@@ -28,16 +28,12 @@ function AppShell() {
   const handleIngest = async () => {
     if (ingesting) return;
     setIngesting(true);
-    let coldTimer = setTimeout(() => {
-      notify("Сервер спал. Пробуждение займет около минуты...");
-    }, 3000);
     try {
       const r = await triggerIngestion();
       notify(r.message || "Процесс запущен в фоне");
     } catch (e) {
       notify(`Ошибка: ${e.message}`);
     } finally {
-      clearTimeout(coldTimer);
       setIngesting(false);
     }
   };
@@ -71,7 +67,6 @@ function AppShell() {
           background: '#111', color: '#FFF', padding: '10px 20px', borderRadius: 100,
           fontSize: 13, fontWeight: 500, zIndex: 9999,
           boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-          animation: 'fadeIn 0.2s ease',
         }}>
           {notification}
         </div>

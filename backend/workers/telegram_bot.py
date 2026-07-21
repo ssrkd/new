@@ -38,24 +38,27 @@ def send_telegram_notification(article: dict, raw_url: str):
         return
 
     # Формируем текст сообщения
-    title = article.get("summary", "Новость без заголовка")[:100]
+    summary = article.get("summary", "Новость без заголовка")
+    raw_title = article.get("title") or summary  # полный заголовок без обрезки
     tags = ", ".join(article.get("tags", []))
     reason = article.get("importance_reason", "")
     
-    message = f"🚨 **ВАЖНАЯ НОВОСТЬ**\n\n"
-    message += f"**{title}**\n\n"
+    message = "🚨 <b>ВАЖНАЯ НОВОСТЬ</b>\n\n"
+    message += f"<b>{raw_title}</b>\n\n"
+    if summary and summary != raw_title:
+        message += f"{summary}\n\n"
     if reason:
-        message += f"💡 _Почему это важно:_ {reason}\n\n"
+        message += f"💡 <i>Почему это важно:</i> {reason}\n\n"
     if tags:
         message += f"🏷 Тэги: {tags}\n\n"
         
-    message += f"🔗 [Читать источник]({raw_url})"
+    message += f"🔗 <a href=\"{raw_url}\">Читать источник</a>"
 
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {
         "chat_id": chat_id,
         "text": message,
-        "parse_mode": "Markdown"
+        "parse_mode": "HTML"
     }
 
     try:

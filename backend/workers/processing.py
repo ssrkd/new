@@ -89,6 +89,7 @@ async def process_article(raw: dict) -> bool:
     # Upsert processed_articles
     pa_row = {
         "raw_article_id": raw["id"],
+        "title": raw.get("title"),  # for Telegram notification
         "summary": result["summary"],
         "tags": result["tags"],
         "entities": result["entities"],
@@ -102,7 +103,9 @@ async def process_article(raw: dict) -> bool:
     new_content = result.get("translated_content") or raw.get("content")
 
     try:
-        db.table("processed_articles").insert(pa_row).execute()
+        # Remove 'title' before DB insert (processed_articles has no title column)
+        db_row = {k: v for k, v in pa_row.items() if k != "title"}
+        db.table("processed_articles").insert(db_row).execute()
         db.table("raw_articles").update({
             "is_processed": True,
             "title": new_title,

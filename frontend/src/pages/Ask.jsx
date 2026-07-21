@@ -457,6 +457,7 @@ export default function NoxAiDashboard({ user }) {
       .replace(/qaraa/gi, 'кара')
       .replace(/noxAI/gi, 'нокс')
       .replace(/nox/gi, 'нокс')
+      .replace(/IT/g, 'Ай-Ти')
       .replace(/Серик/g, 'Сэрик')
       .trim();
   };
@@ -489,12 +490,29 @@ export default function NoxAiDashboard({ user }) {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ru-RU';
+    
+    // Auto-detect Kazakh characters
+    const isKazakh = /[әіңғүұқөһӘІҢҒҮҰҚӨҺ]/i.test(text);
+    utterance.lang = isKazakh ? 'kk-KZ' : 'ru-RU';
+    
     utterance.rate = 1.15;
     utterance.pitch = 0.9;
+    
     const voices = window.speechSynthesis.getVoices();
-    const ruVoice = voices.find(v => v.lang.startsWith('ru'));
-    if (ruVoice) utterance.voice = ruVoice;
+    let selectedVoice = null;
+    
+    if (isKazakh) {
+      selectedVoice = voices.find(v => v.lang.startsWith('kk'));
+    }
+    
+    if (!selectedVoice) {
+      // Prefer male voices like Pavel or Yuri if available
+      selectedVoice = voices.find(v => v.lang.startsWith('ru') && (v.name.includes('Yuri') || v.name.includes('Pavel')))
+                   || voices.find(v => v.lang.startsWith('ru'));
+    }
+    
+    if (selectedVoice) utterance.voice = selectedVoice;
+    
     audioRef.current = {
       pause: () => window.speechSynthesis.cancel()
     };
