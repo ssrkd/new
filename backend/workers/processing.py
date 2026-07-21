@@ -62,7 +62,7 @@ async def process_article(raw: dict) -> bool:
     messages = [{"role": "user", "content": prompt}]
 
     try:
-        result = await call_llm_json(messages, max_tokens=800)
+        result = await call_llm_json(messages, max_tokens=2000)
     except Exception as e:
         logger.error(f"LLM failed for article {raw['id']}: {e}")
         return False
