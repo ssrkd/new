@@ -13,6 +13,10 @@ const CATEGORIES = [
   // Один таб для всех госорганов (Акорда, МВД, КНБ, Антикор, АФМ, Прокуратура)
   { key: 'gov', label: 'МВД' },
 ];
+const GOV_SOURCES = [
+  'Акорда', 'МВД Казахстана', 'КНБ Казахстана',
+  'Антикор Казахстана', 'АФМ Казахстана', 'Генеральная Прокуратура РК'
+];
 const PAGE_SIZE = 20;
 
 export default function Feed() {
@@ -32,47 +36,89 @@ export default function Feed() {
   // Article Modal
   const [selectedArticle, setSelectedArticle] = useState(null);
 
+  const fetchArticlesFromSupabase = async (off = 0) => {
+    let q = supabase
+      .from('processed_articles')
+      .select(`
+        id, raw_article_id, summary, tags, entities, importance, importance_reason, created_at,
+        raw_articles!inner(id, title, url, content, published_at, source_id,
+          sources!inner(name, category)
+        )
+      `, { count: 'exact' });
+
+    if (importance) q = q.eq('importance', importance);
+    if (category) {
+      const catLower = category.toLowerCase();
+      const catCap = category.charAt(0).toUpperCase() + category.slice(1);
+      q = q.or(`tags.cs.{${catLower}},tags.cs.{${catCap}}`);
+    }
+    if (sourceId) q = q.eq('raw_articles.source_id', sourceId);
+    
+    if (govFilter) {
+      const { data: sourcesData } = await supabase
+        .from('sources')
+        .select('id')
+        .in('name', GOV_SOURCES);
+      if (sourcesData && sourcesData.length > 0) {
+        const ids = sourcesData.map(s => s.id);
+        q = q.in('raw_articles.source_id', ids);
+      } else {
+        q = q.in('raw_articles.source_id', ['none']);
+      }
+    }
+
+    // We order by created_at desc for pagination
+    q = q.order('created_at', { ascending: false });
+    q = q.range(off, off + PAGE_SIZE - 1);
+
+    const { data, count, error } = await q;
+    if (error) throw new Error(error.message);
+
+    // Local JS sort by published_at
+    const sorted = [...(data || [])].sort((a, b) => {
+      const dateA = new Date(a.raw_articles?.published_at || a.created_at);
+      const dateB = new Date(b.raw_articles?.published_at || b.created_at);
+      return dateB - dateA;
+    });
+
+    const mapped = sorted.map(d => ({
+      id: d.id,
+      raw_article_id: d.raw_article_id,
+      title: d.raw_articles?.title,
+      url: d.raw_articles?.url,
+      content: d.raw_articles?.content,
+      published_at: d.raw_articles?.published_at,
+      source_name: d.raw_articles?.sources?.name,
+      summary: d.summary,
+      tags: d.tags,
+      entities: d.entities,
+      importance: d.importance,
+      importance_reason: d.importance_reason,
+      created_at: d.created_at
+    }));
+
+    return { items: mapped, total: count || 0 };
+  };
+
   const load = useCallback(async (off = 0) => {
     setLoading(true);
-    setLongLoading(false);
     setError('');
     
-    // Timer to detect cold start on free Render tier
-    const coldStartTimer = setTimeout(() => {
-      setLongLoading(true);
-    }, 3000);
-
     try {
-      const data = await getArticles({
-        category: category || undefined,
-        importance: importance || undefined,
-        source_id: sourceId || undefined,
-        gov: govFilter ? true : undefined,
-        limit: PAGE_SIZE,
-        offset: off,
-      });
+      const data = await fetchArticlesFromSupabase(off);
       setArticles(data.items || []);
       setTotal(data.total || 0);
       setOffset(off);
     } catch (e) {
       setError(e.message);
     } finally {
-      clearTimeout(coldStartTimer);
       setLoading(false);
-      setLongLoading(false);
     }
   }, [category, importance, sourceId, govFilter]);
 
   const loadSilent = useCallback(async (off = 0) => {
     try {
-      const data = await getArticles({
-        category: category || undefined,
-        importance: importance || undefined,
-        source_id: sourceId || undefined,
-        gov: govFilter ? true : undefined,
-        limit: PAGE_SIZE,
-        offset: off,
-      });
+      const data = await fetchArticlesFromSupabase(off);
       setArticles(data.items || []);
       setTotal(data.total || 0);
     } catch (e) {
@@ -169,14 +215,8 @@ export default function Feed() {
 
         {/* Loading */}
         {loading && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 16 }}>
-            <div className="spinner" style={{ width: 32, height: 32 }} />
-            {longLoading && (
-              <div style={{ textAlign: 'center', animation: 'fadeIn 0.5s ease', color: 'var(--c-text-2)', fontSize: 14 }}>
-                <p style={{ margin: '0 0 4px', fontWeight: 600, color: 'var(--c-text)' }}>Бэкенд просыпается...</p>
-                <p style={{ margin: 0 }}>На бесплатном тарифе Render сервер засыпает без запросов.<br/>Первый запуск займет около минуты. Пожалуйста, подождите.</p>
-              </div>
-            )}
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+            <div className="spinner" style={{ width: 28, height: 28 }} />
           </div>
         )}
 
