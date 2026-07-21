@@ -17,7 +17,7 @@ const GOV_SOURCES = [
   'Акорда', 'МВД Казахстана', 'КНБ Казахстана',
   'Антикор Казахстана', 'АФМ Казахстана', 'Генеральная Прокуратура РК'
 ];
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 50;
 
 export default function Feed() {
   const [articles, setArticles] = useState([]);

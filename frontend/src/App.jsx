@@ -28,12 +28,16 @@ function AppShell() {
   const handleIngest = async () => {
     if (ingesting) return;
     setIngesting(true);
+    let coldTimer = setTimeout(() => {
+      notify("Сервер спал. Пробуждение займет около минуты...");
+    }, 3000);
     try {
       const r = await triggerIngestion();
       notify(r.message || "Процесс запущен в фоне");
     } catch (e) {
       notify(`Ошибка: ${e.message}`);
     } finally {
+      clearTimeout(coldTimer);
       setIngesting(false);
     }
   };
