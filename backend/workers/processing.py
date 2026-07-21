@@ -131,6 +131,7 @@ async def run_processing(batch_size: int = 50) -> dict:
         db.table("raw_articles")
         .select("*")
         .eq("is_processed", False)
+        .order("published_at", desc=True, nullsfirst=False)
         .limit(batch_size)
         .execute()
     )
