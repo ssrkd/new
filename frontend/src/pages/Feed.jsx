@@ -21,6 +21,7 @@ export default function Feed() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [offset, setOffset] = useState(0);
+  const [longLoading, setLongLoading] = useState(false);
 
   // Filters
   const [category, setCategory] = useState('');
@@ -33,7 +34,14 @@ export default function Feed() {
 
   const load = useCallback(async (off = 0) => {
     setLoading(true);
+    setLongLoading(false);
     setError('');
+    
+    // Timer to detect cold start on free Render tier
+    const coldStartTimer = setTimeout(() => {
+      setLongLoading(true);
+    }, 3000);
+
     try {
       const data = await getArticles({
         category: category || undefined,
@@ -49,7 +57,9 @@ export default function Feed() {
     } catch (e) {
       setError(e.message);
     } finally {
+      clearTimeout(coldStartTimer);
       setLoading(false);
+      setLongLoading(false);
     }
   }, [category, importance, sourceId, govFilter]);
 
@@ -159,8 +169,14 @@ export default function Feed() {
 
         {/* Loading */}
         {loading && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-            <div className="spinner" style={{ width: 28, height: 28 }} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 16 }}>
+            <div className="spinner" style={{ width: 32, height: 32 }} />
+            {longLoading && (
+              <div style={{ textAlign: 'center', animation: 'fadeIn 0.5s ease', color: 'var(--c-text-2)', fontSize: 14 }}>
+                <p style={{ margin: '0 0 4px', fontWeight: 600, color: 'var(--c-text)' }}>Бэкенд просыпается...</p>
+                <p style={{ margin: 0 }}>На бесплатном тарифе Render сервер засыпает без запросов.<br/>Первый запуск займет около минуты. Пожалуйста, подождите.</p>
+              </div>
+            )}
           </div>
         )}
 

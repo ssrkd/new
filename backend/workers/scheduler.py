@@ -35,23 +35,30 @@ def start_scheduler():
     s = get_settings()
     _scheduler = AsyncIOScheduler()
 
+    from datetime import datetime, timezone, timedelta
+    # Delay first run by 2 minutes so server is ready before heavy tasks start
+    start_delay = datetime.now(timezone.utc) + timedelta(minutes=2)
+
     _scheduler.add_job(
         _run_ingestion,
         trigger=IntervalTrigger(minutes=s.ingestion_interval_minutes),
         id="ingestion",
         replace_existing=True,
+        next_run_time=start_delay,
     )
     _scheduler.add_job(
         _run_processing,
         trigger=IntervalTrigger(minutes=s.processing_interval_minutes),
         id="processing",
         replace_existing=True,
+        next_run_time=start_delay + timedelta(minutes=1),
     )
 
     _scheduler.start()
     logger.info(
         f"Scheduler started: ingestion every {s.ingestion_interval_minutes}min, "
         f"processing every {s.processing_interval_minutes}min"
+        f" (first run at {start_delay.strftime('%H:%M:%S')} UTC)"
     )
 
 
