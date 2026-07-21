@@ -3,7 +3,7 @@
  * Base URL via Vite proxy: /api → http://localhost:8000/api
  */
 
-const BASE = '';
+const BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 async function request(path, options = {}) {
   const token = localStorage.getItem('access_token');
