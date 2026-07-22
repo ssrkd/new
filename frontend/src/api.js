@@ -1,3 +1,4 @@
+
 /**
  * API helpers — all calls to FastAPI backend
  * Base URL via Vite proxy: /api → http://localhost:8000/api
@@ -10,13 +11,20 @@ async function request(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, { ...options, headers });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
+  try {
+    const res = await fetch(`${BASE}${path}`, { ...options, headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Ошибка сервера (HTTP ${res.status})`);
+    }
+    if (res.status === 204) return null;
+    return await res.json();
+  } catch (err) {
+    if (err.message && err.message.includes('Failed to fetch')) {
+      throw new Error('Ошибка связи с сервером. Проверьте соединение или работу бэкенда.');
+    }
+    throw err;
   }
-  if (res.status === 204) return null;
-  return res.json();
 }
 
 // ── Articles ──────────────────────────────────────────────────────────────────

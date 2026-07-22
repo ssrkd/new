@@ -69,7 +69,7 @@ export default function Feed() {
       }
     }
 
-    // Сначала по времени обработки (created_at) desc — новые сверху
+    // Сначала по времени обработки (created_at) desc — самые свежие обработанные сверху
     q = q
       .order('created_at', { ascending: false })
       .range(off, off + PAGE_SIZE - 1);
@@ -77,14 +77,30 @@ export default function Feed() {
     const { data, count, error } = await q;
     if (error) throw new Error(error.message);
 
-    // Досортировка по published_at новейших сверху
+    // Сортировка результата: если есть published_at, сортируем по нему, иначе по created_at
     const sorted = [...(data || [])].sort((a, b) => {
       const dateA = new Date(a.raw_articles?.published_at || a.created_at);
       const dateB = new Date(b.raw_articles?.published_at || b.created_at);
       return dateB - dateA;
     });
 
-    const mapped = sorted.map(d => ({
+    // Deduplicate by title
+    const seenTitles = new Set();
+    const deduped = [];
+    for (const d of sorted) {
+      const title = (d.raw_articles?.title || "").trim();
+      if (!title) {
+        deduped.push(d);
+        continue;
+      }
+      const normTitle = title.toLowerCase();
+      if (!seenTitles.has(normTitle)) {
+        seenTitles.add(normTitle);
+        deduped.push(d);
+      }
+    }
+
+    const mapped = deduped.map(d => ({
       id: d.id,
       raw_article_id: d.raw_article_id,
       title: d.raw_articles?.title,
@@ -101,6 +117,7 @@ export default function Feed() {
 
     return { items: mapped, total: count || 0 };
   };
+
 
   const handleArticleClick = async (article) => {
     setSelectedArticle(article);
@@ -196,21 +213,23 @@ export default function Feed() {
   return (
     <>
       {/* Header */}
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
           <h1 className="page-header-title">Новостная лента</h1>
           {lastUpdated && (
             <div style={{ fontSize: '11px', color: '#8E8E93', display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <span>Обновлено:</span>
+              <span>Синхронизация экрана:</span>
               <LiveTimeAgo date={lastUpdated} />
             </div>
           )}
         </div>
-        {!loading && (
-          <span style={{ fontSize: 12, color: 'var(--c-text-3)' }}>
-            {total} статей
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {!loading && (
+            <span style={{ fontSize: 12, color: 'var(--c-text-3)' }}>
+              {total} статей
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="page-content">

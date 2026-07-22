@@ -45,12 +45,56 @@ const NAV = [
   },
 ];
 
+function WeatherWidget() {
+  const [weather, setWeather] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // get address from memory then fetch weather
+    getMemory().then(data => {
+      const addr = data.profile?.address;
+      if (addr) {
+        fetch(`http://localhost:8000/api/weather?address=${encodeURIComponent(addr)}`)
+          .then(res => res.json())
+          .then(w => setWeather(w))
+          .catch(() => {})
+          .finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
+    }).catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div style={{ fontSize: 12, padding: 10, color: '#888' }}>Загрузка погоды...</div>;
+  if (!weather) return null;
+
+  return (
+    <div style={{ marginTop: 24, marginBottom: 12, padding: '12px 14px', background: '#fafafa', border: '1px solid #eaeaea', borderRadius: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#888', textTransform: 'uppercase', marginBottom: 4 }}>
+        Текущая погода
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ fontSize: 24, fontWeight: 700, color: '#111' }}>{weather.temperature}°C</div>
+        <div style={{ fontSize: 12, color: '#555', display: 'flex', flexDirection: 'column' }}>
+          <span>Ветер: {weather.windspeed} км/ч</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
 function AccountPanel({ onClose }) {
   const KEYS = [
     { key: 'name', label: 'Ваше имя', placeholder: 'Введите ваше имя...' },
     { key: 'role', label: 'Должность / роль', placeholder: 'Аналитик, менеджер...' },
     { key: 'interests', label: 'Темы интереса', placeholder: 'Экономика, дипломатия, санкции...' },
     { key: 'country', label: 'Страна / регион', placeholder: 'Казахстан...' },
+    { key: 'address', label: 'Точный адрес', placeholder: 'Астана, ул. Достык, 16' },
+    { key: 'dob', label: 'Дата рождения', placeholder: 'ДД.ММ.ГГГГ' },
     { key: 'notes', label: 'Дополнительные заметки', placeholder: 'Любая информация для AI...' },
   ];
 
@@ -83,6 +127,30 @@ function AccountPanel({ onClose }) {
   const handleClear = async () => {
     setProfile({});
     await updateMemory({});
+  };
+
+  const handleGeoLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Геолокация не поддерживается вашим браузером");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=ru`);
+        const data = await r.json();
+        if (data && data.address) {
+          const city = data.address.city || data.address.town || data.address.village || '';
+          const road = data.address.road || '';
+          const addr = [city, road].filter(Boolean).join(', ');
+          setProfile(p => ({...p, address: addr}));
+        }
+      } catch(e) {
+        alert("Не удалось определить адрес. Введите вручную.");
+      }
+    }, () => {
+      alert("Доступ к геолокации запрещен.");
+    });
   };
 
   const isBlank = !profile.name;
@@ -130,23 +198,6 @@ function AccountPanel({ onClose }) {
                 </div>
                 <div style={{ color: '#aaa' }}>→</div>
               </button>
-
-              <button
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#fafafa', border: '1px solid #eaeaea', borderRadius: 12, cursor: 'default', textAlign: 'left' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#111"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>Интеграция</div>
-                    <div style={{ fontSize: 12, color: '#34C759', marginTop: 2, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      Подключен
-                    </div>
-                  </div>
-                </div>
-              </button>
             </div>
           </>
         )}
@@ -161,19 +212,18 @@ function AccountPanel({ onClose }) {
               <div style={{ fontSize: 20, fontWeight: 700, color: '#111', letterSpacing: '-0.01em' }}>Память AI</div>
             </div>
 
-            {isBlank && !loading && (
-              <div style={{ background: '#f8f9ff', border: '1px solid #e0e3ff', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#555' }}>
-                <strong>Представьтесь AI</strong> — введите ваше имя ниже, чтобы AI мог к вам обращаться.
-              </div>
-            )}
-
             {loading ? (
               <div style={{ textAlign: 'center', color: '#999', padding: '20px 0', fontSize: 13 }}>Загрузка...</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {KEYS.map(({ key, label, placeholder }) => (
                   <div key={key}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>{label}</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</label>
+                      {key === 'address' && (
+                        <button onClick={handleGeoLocation} style={{ fontSize: 11, color: '#34C759', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>📍 Моя геопозиция</button>
+                      )}
+                    </div>
                     <input
                       type="text" value={profile[key] || ''}
                       onChange={e => setProfile(p => ({ ...p, [key]: e.target.value }))}
@@ -233,6 +283,8 @@ export default function Sidebar({ onTriggerIngest, onTriggerProcess, ingesting, 
             </NavLink>
           ))}
 
+          <WeatherWidget />
+
           {/* Admin controls inside scroll to prevent getting lost */}
           <div className="sidebar-section-label" style={{ marginTop: 24 }}>Управление</div>
 
@@ -262,7 +314,6 @@ export default function Sidebar({ onTriggerIngest, onTriggerProcess, ingesting, 
             {processing ? 'Обработка...' : 'Обработать'}
           </button>
 
-          {/* Account */}
           <button
             className="nav-item"
             onClick={() => setMemOpen(true)}

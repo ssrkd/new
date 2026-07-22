@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta, date
 
 from fastapi import APIRouter, HTTPException
 from backend.database import get_client
-from backend.llm_client import call_llm
+from backend.llm_client import call_llm_for_news
 from backend.models import DigestResponse, DigestCategoryItem
 
 router = APIRouter(prefix="/api/digest", tags=["digest"])
@@ -109,10 +109,7 @@ async def generate_daily_digest():
                 articles="\n".join(articles_text[:30]),  # cap at 30
             )
             try:
-                content = await call_llm(
-                    [{"role": "user", "content": prompt_text}],
-                    max_tokens=600,
-                )
+                content = await call_llm_for_news([{"role": "user", "content": prompt_text}])
             except Exception as e:
                 logger.error(f"Digest LLM failed for {cat}: {e}")
                 content = "Ошибка генерации сводки."

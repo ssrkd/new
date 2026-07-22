@@ -413,12 +413,16 @@ export default function NoxAiDashboard({ user }) {
 
   const loadChats = useCallback(async () => {
     try {
+      const cached = localStorage.getItem('ask_chats');
+      if (cached) setChats(JSON.parse(cached));
+      
       const data = await getChats();
       setChats(data || []);
+      localStorage.setItem('ask_chats', JSON.stringify(data || []));
       // User wants it to open a new chat by default, so no auto-selecting latest
       // setActiveChatId(prev => ...) is removed.
     } catch (e) {
-      console.error('Failed to load chats', e);
+      console.error('Failed to load chats, falling back to cache', e);
     }
   }, []); // no deps — avoids infinite loop
 
@@ -433,6 +437,11 @@ export default function NoxAiDashboard({ user }) {
         return;
       }
       try {
+        const cached = localStorage.getItem(`ask_msgs_${activeChatId}`);
+        if (cached) {
+          try { setMessages(JSON.parse(cached)); } catch(e){}
+        }
+
         const data = await getChatHistory(activeChatId);
         const msgs = (data.messages || []).map(m => ({
           role: m.role,
@@ -443,6 +452,7 @@ export default function NoxAiDashboard({ user }) {
         // Защита от затирания локальных сообщений при создании нового чата
         setMessages(prev => {
           if (msgs.length === 0 && prev.length > 0) return prev;
+          localStorage.setItem(`ask_msgs_${activeChatId}`, JSON.stringify(msgs));
           return msgs;
         });
       } catch (e) {
@@ -516,7 +526,11 @@ export default function NoxAiDashboard({ user }) {
     }
 
     const userMsg = { role: 'user', text: textStr, time: new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }) };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => {
+      const next = [...prev, userMsg];
+      if (chatId) localStorage.setItem(`ask_msgs_${chatId}`, JSON.stringify(next));
+      return next;
+    });
     setInputText('');
     setIsLoading(true);
     setLoadingStage(0);
@@ -551,12 +565,20 @@ export default function NoxAiDashboard({ user }) {
         sources: data.sources || [],
         time: new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages(prev => [...prev, aiMsg]);
+      setMessages(prev => {
+        const next = [...prev, aiMsg];
+        if (chatId) localStorage.setItem(`ask_msgs_${chatId}`, JSON.stringify(next));
+        return next;
+      });
       if (speakTextRef.current) speakTextRef.current(finalResponseText);
       loadChats();
     } catch (e) {
       const errMsg = { role: 'assistant', text: 'Ошибка связи с сервером.', time: new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }) };
-      setMessages(prev => [...prev, errMsg]);
+      setMessages(prev => {
+        const next = [...prev, errMsg];
+        if (chatId) localStorage.setItem(`ask_msgs_${chatId}`, JSON.stringify(next));
+        return next;
+      });
     } finally {
       clearTimeout(stageTimer1);
       clearTimeout(stageTimer2);
@@ -620,7 +642,6 @@ export default function NoxAiDashboard({ user }) {
       .replace(/noxAI/gi, 'нокс')
       .replace(/nox/gi, 'нокс')
       .replace(/IT/g, 'Ай-Ти')
-      .replace(/Серик/g, 'Сэрик')
       .trim();
   };
 
@@ -637,7 +658,7 @@ export default function NoxAiDashboard({ user }) {
     const params = new URLSearchParams({
       text: sentence,
       voice,
-      rate: '+10%'
+      rate: '+25%'
     });
     if (voice === 'ru-RU-DmitryNeural') {
       params.append('pitch', '-2Hz');
@@ -708,7 +729,8 @@ export default function NoxAiDashboard({ user }) {
       const cleanText = cleanTextForTts(text);
       if (!cleanText) return;
 
-      const sentences = cleanText.match(/[^.!?\n]+[.!?\n]+/g) || [cleanText];
+      // Split by paragraphs to avoid small pauses
+      const sentences = cleanText.split(/\n+/).filter(p => p.trim().length > 0);
 
       const audioQueue = [];
       let isPlaying = false;
@@ -780,8 +802,8 @@ export default function NoxAiDashboard({ user }) {
 
 
   return (
-    <div style={{
-      display: 'flex', height: '100vh', width: '100vw',
+    <div className="ask-wrapper" style={{
+      display: 'flex', height: '100%', width: '100%',
       backgroundColor: '#F3F3F3',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       color: '#1A1A1A', margin: 0, padding: 0, boxSizing: 'border-box',
@@ -789,7 +811,7 @@ export default function NoxAiDashboard({ user }) {
     }}>
 
       {/* ── SIDEBAR ── */}
-      <aside style={{ width: '240px', height: '100%', display: 'flex', flexDirection: 'column', padding: '20px 14px', boxSizing: 'border-box', flexShrink: 0 }}>
+      <aside className="ask-sidebar" style={{ width: '240px', height: '100%', display: 'flex', flexDirection: 'column', padding: '20px 14px', boxSizing: 'border-box', flexShrink: 0 }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -872,7 +894,7 @@ export default function NoxAiDashboard({ user }) {
       </aside>
 
       {/* ── MAIN ── */}
-      <main style={{
+      <main className="ask-main" style={{
         flex: 1, height: 'calc(100vh - 16px)', margin: '8px 8px 8px 0',
         backgroundColor: '#FFFFFF', borderRadius: '20px',
         display: 'flex', flexDirection: 'column',
@@ -936,16 +958,16 @@ export default function NoxAiDashboard({ user }) {
         ) : (
           /* Chat view */
           <div ref={messagesContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ width: '100%', maxWidth: '540px', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative', zIndex: 10 }}>
+            <div className="ask-container" style={{ width: '100%', maxWidth: '720px', display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative', zIndex: 10 }}>
               {messages.map((msg, i) => (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start', gap: '4px' }}>
                   <div style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', gap: '8px', alignItems: 'flex-end', width: '100%' }}>
                     {msg.role === 'assistant' && (
                       <img src={noxLogo} alt="nox" style={{ width: '22px', height: '22px', borderRadius: '6px', flexShrink: 0, marginBottom: '2px', mixBlendMode: 'multiply' }} />
                     )}
-                    <div style={{
-                      maxWidth: '62%', padding: '9px 13px',
-                      borderRadius: msg.role === 'user' ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
+                    <div className="rag-answer" style={{
+                      maxWidth: '85%', padding: '10px 15px',
+                      borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                       background: msg.role === 'user' ? '#1A1A1A' : '#F0F0F2',
                       color: msg.role === 'user' ? '#FFF' : '#1A1A1A',
                       fontSize: '13.5px', lineHeight: '1.5', whiteSpace: 'pre-wrap', userSelect: 'text',

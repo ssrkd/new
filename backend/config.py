@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1/chat/completions"
     openrouter_model: str = "google/gemini-2.5-flash"
 
+    # ── LLM — Gemini (Primary) ──────────────────────────────────
+    gemini_api_key: str = ""
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    gemini_model: str = "gemini-flash-latest"
+
     # ── LLM — Groq (fallback, round-robin) ───────────────────
     groq_api_keys: str = ""
 
@@ -74,6 +79,6 @@ def get_settings() -> Settings:
         if not _settings.supabase_url:
             object.__setattr__(_settings, 'supabase_url', os.environ.get("SUPABASE_URL", ""))
             object.__setattr__(_settings, 'supabase_service_key', os.environ.get("SUPABASE_SERVICE_KEY", ""))
-            object.__setattr__(_settings, 'openrouter_api_key', os.environ.get("OPENROUTER_API_KEY", ""))
             object.__setattr__(_settings, 'groq_api_keys', os.environ.get("GROQ_API_KEYS", ""))
+            object.__setattr__(_settings, 'gemini_api_key', os.environ.get("GEMINI_API_KEY", ""))
     return _settings

@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from backend.config import get_settings
 from backend.workers.scheduler import start_scheduler, stop_scheduler
-from backend.routers import articles, ask, digest, sources, admin, chats, memory, voice
+from backend.routers import articles, ask, digest, sources, admin, chats, memory, voice, weather
 
 logging.basicConfig(
     level=logging.INFO,
@@ -89,3 +89,4 @@ app.include_router(admin.router)
 app.include_router(chats.router)
 app.include_router(memory.router)
 app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
+app.include_router(weather.router)

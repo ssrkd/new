@@ -137,15 +137,30 @@ async def fetch_scraped(source: dict) -> int:
     from backend.scrapers.gov import run_scraper, fetch_article_content, GOV_SCRAPERS
 
     db = get_client()
-    # Map source name → slug. Try exact, then slugify name, then use URL hostname.
     name_lower = source.get("name", "").lower()
+    
     slug = None
-    for key in GOV_SCRAPERS:
-        if key in name_lower:
-            slug = key
-            break
+    # Check explicit mapping for Kazakh gov sources
+    if "акорда" in name_lower or "akorda" in name_lower:
+        slug = "akorda"
+    elif "мвд" in name_lower or "mvd" in name_lower:
+        slug = "mvd"
+    elif "кнб" in name_lower or "knb" in name_lower:
+        slug = "knb"
+    elif "антикор" in name_lower or "anticor" in name_lower:
+        slug = "anticorruption"
+    elif "афм" in name_lower or "afm" in name_lower:
+        slug = "afm"
+    elif "прокур" in name_lower or "prosecutor" in name_lower:
+        slug = "prosecutor"
+    else:
+        for key in GOV_SCRAPERS:
+            if key in name_lower:
+                slug = key
+                break
     if not slug:
         slug = name_lower.replace(" ", "_").replace("(", "").replace(")", "")
+
     articles = await run_scraper(slug)
 
     inserted = 0

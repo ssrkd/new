@@ -27,8 +27,35 @@ def _get_groq_key_cycle():
     return _groq_key_cycle
 
 
-async def _call_openrouter(messages: list[dict], max_tokens: int = 1024, system: str | None = None) -> str:
+async def _call_gemini(messages: list[dict], max_tokens: int = 1024, system: str | None = None) -> str:
     s = get_settings()
+    if not s.gemini_api_key:
+        raise ValueError("Gemini API key not configured")
+    full_messages = ([{"role": "system", "content": system}] if system else []) + messages
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.post(
+            s.gemini_base_url,
+            headers={
+                "Authorization": f"Bearer {s.gemini_api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": s.gemini_model,
+                "messages": full_messages,
+                "temperature": 0,
+                "max_tokens": max_tokens,
+            },
+        )
+        data = resp.json()
+        if resp.status_code != 200 or "error" in data:
+            raise ValueError(f"Gemini API error: {data.get('error', resp.text)}")
+        return data["choices"][0]["message"]["content"]
+
+
+
+async def _call_openrouter(messages: list[dict], max_tokens: int = 1024, system: str | None = None, model: str | None = None) -> str:
+    s = get_settings()
+    target_model = model or s.openrouter_model
     full_messages = ([{"role": "system", "content": system}] if system else []) + messages
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(
@@ -40,7 +67,7 @@ async def _call_openrouter(messages: list[dict], max_tokens: int = 1024, system:
                 "Content-Type": "application/json",
             },
             json={
-                "model": s.openrouter_model,
+                "model": target_model,
                 "messages": full_messages,
                 "temperature": 0,
                 "max_tokens": max_tokens,
@@ -48,7 +75,7 @@ async def _call_openrouter(messages: list[dict], max_tokens: int = 1024, system:
         )
         data = resp.json()
         if resp.status_code != 200 or "error" in data:
-            raise ValueError(f"OpenRouter error: {data.get('error', resp.text)}")
+            raise ValueError(f"OpenRouter error ({target_model}): {data.get('error', resp.text)}")
         return data["choices"][0]["message"]["content"]
 
 
@@ -76,18 +103,13 @@ async def _call_groq(messages: list[dict], max_tokens: int = 1024, system: str |
         return data["choices"][0]["message"]["content"]
 
 
-async def call_llm(messages: list[dict], max_tokens: int = 1024, system: str | None = None, temperature: int = 0) -> str:
+async def call_llm_for_news(messages: list[dict], max_tokens: int = 1024, system: str | None = None, temperature: int = 0) -> str:
     """
-    Call LLM with OpenRouter primary, Groq fallback.
-    Always temperature=0.
+    Call LLM for news processing.
+    Order: Groq -> OpenRouter -> Gemini.
     """
-    try:
-        return await _call_openrouter(messages, max_tokens, system=system)
-    except Exception as e:
-        logger.warning(f"OpenRouter failed ({e}), trying Groq fallback...")
-
-    # Try Groq (up to 4 keys via round-robin)
     last_error = None
+    # 1. Primary: Groq
     keys = get_settings().parsed_groq_keys
     for _ in range(max(len(keys), 1)):
         try:
@@ -96,15 +118,64 @@ async def call_llm(messages: list[dict], max_tokens: int = 1024, system: str | N
             logger.warning(f"Groq key failed: {e}")
             last_error = e
 
-    raise RuntimeError(f"All LLM providers failed. Last error: {last_error}")
+    # 2. Fallback: OpenRouter
+    try:
+        return await _call_openrouter(messages, max_tokens, system=system)
+    except Exception as e:
+        logger.warning(f"OpenRouter news fallback failed ({e}), trying Gemini...")
+        last_error = e
+        
+    # 3. Fallback: Gemini
+    try:
+        if get_settings().gemini_api_key:
+            return await _call_gemini(messages, max_tokens, system=system)
+    except Exception as e:
+        logger.warning(f"Gemini news fallback failed ({e}).")
+        last_error = e
+
+    raise RuntimeError(f"All LLM providers failed for news. Last error: {last_error}")
 
 
-async def call_llm_json(messages: list[dict], max_tokens: int = 1024) -> dict[str, Any]:
+async def call_llm_for_chat(messages: list[dict], max_tokens: int = 1024, system: str | None = None, temperature: int = 0) -> str:
+    """
+    Call LLM for interactive AI Chat.
+    Order: Groq -> OpenRouter -> Gemini.
+    """
+    last_error = None
+    
+    # 1. Primary: Groq (for speed)
+    keys = get_settings().parsed_groq_keys
+    for _ in range(max(len(keys), 1)):
+        try:
+            return await _call_groq(messages, max_tokens, system=system)
+        except Exception as e:
+            logger.warning(f"Groq chat key failed: {e}")
+            last_error = e
+
+    # 2. Fallback: OpenRouter
+    try:
+        return await _call_openrouter(messages, max_tokens, system=system)
+    except Exception as e:
+        logger.warning(f"OpenRouter chat fallback failed ({e}), trying Gemini...")
+        last_error = e
+
+    # 3. Fallback: Gemini
+    try:
+        if get_settings().gemini_api_key:
+            return await _call_gemini(messages, max_tokens, system=system)
+    except Exception as e:
+        logger.warning(f"Gemini chat fallback failed ({e}).")
+        last_error = e
+
+    raise RuntimeError(f"All LLM providers failed for chat. Last error: {last_error}")
+
+
+async def call_llm_json_for_news(messages: list[dict], max_tokens: int = 1024) -> dict[str, Any]:
     """
     Call LLM and parse JSON response. Retries once on parse failure.
     """
     for attempt in range(2):
-        raw = await call_llm(messages, max_tokens)
+        raw = await call_llm_for_news(messages, max_tokens)
         # Strip markdown code fences if present
         cleaned = raw.strip()
         if cleaned.startswith("```"):
